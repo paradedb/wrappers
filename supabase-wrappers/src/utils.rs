@@ -258,6 +258,7 @@ pub(super) unsafe fn extract_target_columns(
                 name: CStr::from_ptr(attname).to_str().unwrap().to_owned(),
                 num: attno as usize,
                 type_oid,
+                type_mod: (*var).vartypmod,
             });
         }
     }
