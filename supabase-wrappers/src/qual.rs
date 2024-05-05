@@ -103,6 +103,9 @@ pub(crate) unsafe fn form_array_from_datum(
                 },
             )
         }
+        PgOid::BuiltIn(PgBuiltInOids::TIMESTAMPTZARRAYOID) => {
+            Vec::<Cell>::from_polymorphic_datum(datum, false, pg_sys::TIMESTAMPTZOID)
+        }
         PgOid::BuiltIn(PgBuiltInOids::JSONBARRAYOID) => {
             Array::<JsonB>::from_polymorphic_datum(datum, is_null, pg_sys::JSONBOID).map(|arr| {
                 arr.iter()
@@ -212,10 +215,6 @@ pub(crate) unsafe fn extract_from_op_expr(
                 return Some(qual);
             }
         }
-    }
-
-    if let Some(stm) = pgrx::nodes::node_to_string(expr as _) {
-        report_warning(&format!("unsupported operator expression in qual: {}", stm));
     }
 
     None
