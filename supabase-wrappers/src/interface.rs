@@ -3,7 +3,7 @@
 
 use crate::FdwRoutine;
 use pgrx::pg_sys::panic::ErrorReport;
-use pgrx::prelude::{Date, Timestamp, TimestampWithTimeZone};
+use pgrx::prelude::{Date, Time, Timestamp, TimestampWithTimeZone};
 use pgrx::{
     fcinfo,
     pg_sys::{self, BuiltinOid, Datum, Oid},
@@ -46,6 +46,7 @@ pub enum Cell {
     Numeric(AnyNumeric),
     String(String),
     Date(Date),
+    Time(Time),
     Timestamp(Timestamp),
     TimestampTz(TimestampWithTimeZone),
     Json(JsonB),
@@ -64,6 +65,7 @@ impl Clone for Cell {
             Cell::Numeric(v) => Cell::Numeric(v.clone()),
             Cell::String(v) => Cell::String(v.clone()),
             Cell::Date(v) => Cell::Date(*v),
+            Cell::Time(v) => Cell::Time(*v),
             Cell::Timestamp(v) => Cell::Timestamp(*v),
             Cell::TimestampTz(v) => Cell::TimestampTz(*v),
             Cell::Json(v) => Cell::Json(JsonB(v.0.clone())),
@@ -89,6 +91,13 @@ impl fmt::Display for Cell {
                         .unwrap();
                 let dt_cstr = CStr::from_ptr(dt.cast_mut_ptr());
                 write!(f, "'{}'", dt_cstr.to_str().unwrap())
+            },
+            Cell::Time(v) => unsafe {
+                let tm =
+                    fcinfo::direct_function_call_as_datum(pg_sys::time_out, &[(*v).into_datum()])
+                        .unwrap();
+                let tm_cstr = CStr::from_ptr(tm.cast_mut_ptr());
+                write!(f, "'{}'", tm_cstr.to_str().unwrap())
             },
             Cell::Timestamp(v) => unsafe {
                 let ts = fcinfo::direct_function_call_as_datum(
@@ -126,6 +135,7 @@ impl IntoDatum for Cell {
             Cell::Numeric(v) => v.into_datum(),
             Cell::String(v) => v.into_datum(),
             Cell::Date(v) => v.into_datum(),
+            Cell::Time(v) => v.into_datum(),
             Cell::Timestamp(v) => v.into_datum(),
             Cell::TimestampTz(v) => v.into_datum(),
             Cell::Json(v) => v.into_datum(),
@@ -148,6 +158,7 @@ impl IntoDatum for Cell {
             || other == pg_sys::NUMERICOID
             || other == pg_sys::TEXTOID
             || other == pg_sys::DATEOID
+            || other == pg_sys::TIMEOID
             || other == pg_sys::TIMESTAMPOID
             || other == pg_sys::TIMESTAMPTZOID
             || other == pg_sys::JSONBOID
@@ -193,6 +204,9 @@ impl FromDatum for Cell {
             }
             PgOid::BuiltIn(PgBuiltInOids::DATEOID) => {
                 Some(Cell::Date(Date::from_datum(datum, false).unwrap()))
+            }
+            PgOid::BuiltIn(PgBuiltInOids::TIMEOID) => {
+                Some(Cell::Time(Time::from_datum(datum, false).unwrap()))
             }
             PgOid::BuiltIn(PgBuiltInOids::TIMESTAMPOID) => Some(Cell::Timestamp(
                 Timestamp::from_datum(datum, false).unwrap(),
