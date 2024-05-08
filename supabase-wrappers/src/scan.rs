@@ -1,8 +1,9 @@
-use pgrx::FromDatum;
+use pgrx::pg_sys::MyDatabaseId;
 use pgrx::{
     debug2, memcxt::PgMemoryContexts, pg_sys::Datum, pg_sys::Oid, prelude::*, IntoDatum,
     PgSqlErrorCode,
 };
+use pgrx::{FromDatum, PgRelation};
 use std::collections::HashMap;
 use std::marker::PhantomData;
 
@@ -81,13 +82,15 @@ impl<E: Into<ErrorReport>, W: ForeignDataWrapper<E>> FdwState<E, W> {
     }
 
     #[inline]
-    fn begin_scan(&mut self) -> Result<(), E> {
+    fn begin_scan(&mut self, extra_opts: Option<HashMap<String, String>>) -> Result<(), E> {
+        let mut merged_opts = extra_opts.unwrap_or_default();
+        merged_opts.extend(self.opts.clone());
         self.instance.begin_scan(
             &self.quals,
             &self.tgts,
             &self.sorts,
             &self.limit,
-            self.opts.clone(),
+            merged_opts,
         )
     }
 
@@ -306,11 +309,17 @@ pub(super) extern "C" fn begin_foreign_scan<E: Into<ErrorReport>, W: ForeignData
 
         // begin scan if it is not EXPLAIN statement
         if eflags & pg_sys::EXEC_FLAG_EXPLAIN_ONLY as c_int <= 0 {
-            state.begin_scan().report_unwrap();
-
             let rel = scan_state.ss_currentRelation;
             let tup_desc = (*rel).rd_att;
             let natts = (*tup_desc).natts as usize;
+
+            let pg_rel = PgRelation::from_pg(rel);
+            let extra_opts = HashMap::from([
+                ("database_oid".into(), MyDatabaseId.to_string()),
+                ("schema_oid".into(), pg_rel.namespace_oid().to_string()),
+                ("table_oid".into(), pg_rel.oid().to_string()),
+            ]);
+            state.begin_scan(Some(extra_opts)).report_unwrap();
 
             // initialize scan result lists
             state
