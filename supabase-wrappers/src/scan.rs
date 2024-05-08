@@ -1,8 +1,9 @@
+use pgrx::FromDatum;
+use pgrx::PgRelation;
 use pgrx::{
     debug2, memcxt::PgMemoryContexts, pg_sys::Datum, pg_sys::Oid, prelude::*, IntoDatum,
     PgSqlErrorCode,
 };
-use pgrx::{FromDatum, PgRelation};
 use std::collections::HashMap;
 use std::marker::PhantomData;
 
