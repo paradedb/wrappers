@@ -1,4 +1,3 @@
-use pgrx::pg_sys::MyDatabaseId;
 use pgrx::{
     debug2, memcxt::PgMemoryContexts, pg_sys::Datum, pg_sys::Oid, prelude::*, IntoDatum,
     PgSqlErrorCode,
@@ -21,6 +20,10 @@ use crate::prelude::ForeignDataWrapper;
 use crate::qual::*;
 use crate::sort::*;
 use crate::utils::{self, report_error, ReportableError, SerdeList};
+
+pub const OPTS_DATABASE_KEY: &str = "database_oid";
+pub const OPTS_NAMESPACE_KEY: &str = "namespace_oid";
+pub const OPTS_TABLE_KEY: &str = "table_oid";
 
 // Fdw private state for scan
 struct FdwState<E: Into<ErrorReport>, W: ForeignDataWrapper<E>> {
@@ -313,11 +316,15 @@ pub(super) extern "C" fn begin_foreign_scan<E: Into<ErrorReport>, W: ForeignData
             let tup_desc = (*rel).rd_att;
             let natts = (*tup_desc).natts as usize;
 
+            // pass begin_scan OID values for the table, schema, and database
             let pg_rel = PgRelation::from_pg(rel);
+            let database_oid = pg_sys::MyDatabaseId.to_string();
+            let namespace_oid = pg_rel.namespace_oid().to_string();
+            let table_oid = pg_rel.oid().to_string();
             let extra_opts = HashMap::from([
-                ("database_oid".into(), MyDatabaseId.to_string()),
-                ("schema_oid".into(), pg_rel.namespace_oid().to_string()),
-                ("table_oid".into(), pg_rel.oid().to_string()),
+                (OPTS_DATABASE_KEY.into(), database_oid),
+                (OPTS_NAMESPACE_KEY.into(), namespace_oid),
+                (OPTS_TABLE_KEY.into(), table_oid),
             ]);
             state.begin_scan(Some(extra_opts)).report_unwrap();
 
