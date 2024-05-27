@@ -133,6 +133,28 @@ mod tests {
 
             let results = c
                 .select(
+                    "SELECT name FROM mssql_users WHERE name like 'ba%' ORDER BY id",
+                    None,
+                    None,
+                )
+                .unwrap()
+                .filter_map(|r| r.get_by_name::<&str, _>("name").unwrap())
+                .collect::<Vec<_>>();
+            assert_eq!(results, vec!["bar", "baz"]);
+
+            let results = c
+                .select(
+                    "SELECT name FROM mssql_users WHERE name not like 'ba%'",
+                    None,
+                    None,
+                )
+                .unwrap()
+                .filter_map(|r| r.get_by_name::<&str, _>("name").unwrap())
+                .collect::<Vec<_>>();
+            assert_eq!(results, vec!["foo"]);
+
+            let results = c
+                .select(
                     "SELECT name FROM mssql_users_cust_sql ORDER BY id",
                     None,
                     None,
@@ -142,5 +164,13 @@ mod tests {
                 .collect::<Vec<_>>();
             assert_eq!(results, vec!["foo", "bar"]);
         });
+
+        let result = std::panic::catch_unwind(|| {
+            Spi::connect(|c| {
+                c.select("SELECT name FROM mssql_users LIMIT 2 OFFSET 1", None, None)
+                    .is_err()
+            })
+        });
+        assert!(result.is_err());
     }
 }
