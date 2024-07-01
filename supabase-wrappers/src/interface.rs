@@ -54,15 +54,15 @@ pub enum Cell {
     Timestamptz(TimestampWithTimeZone),
     Interval(Interval),
     Json(JsonB),
-    Bytea(*mut bytea),
+    Bytea(*mut pg_sys::varlena),
     Uuid(Uuid),
     BoolArray(Vec<Option<bool>>),
+    StringArray(Vec<Option<String>>),
     I16Array(Vec<Option<i16>>),
     I32Array(Vec<Option<i32>>),
     I64Array(Vec<Option<i64>>),
     F32Array(Vec<Option<f32>>),
     F64Array(Vec<Option<f64>>),
-    StringArray(Vec<Option<String>>),
 }
 
 impl Clone for Cell {
@@ -83,15 +83,16 @@ impl Clone for Cell {
             Cell::Timestamptz(v) => Cell::Timestamptz(*v),
             Cell::Interval(v) => Cell::Interval(*v),
             Cell::Json(v) => Cell::Json(JsonB(v.0.clone())),
-            Cell::Bytea(v) => Cell::Bytea(*v),
-            Cell::Uuid(v) => Cell::Uuid(*v),
+            Cell::Interval(v) => Cell::Interval(v.clone()),
+            Cell::Bytea(v) => Cell::Bytea(*v as *mut pg_sys::varlena),
+            Cell::Uuid(v) => Cell::Uuid(v.clone()),
             Cell::BoolArray(v) => Cell::BoolArray(v.clone()),
+            Cell::StringArray(v) => Cell::StringArray(v.clone()),
             Cell::I16Array(v) => Cell::I16Array(v.clone()),
             Cell::I32Array(v) => Cell::I32Array(v.clone()),
             Cell::I64Array(v) => Cell::I64Array(v.clone()),
             Cell::F32Array(v) => Cell::F32Array(v.clone()),
             Cell::F64Array(v) => Cell::F64Array(v.clone()),
-            Cell::StringArray(v) => Cell::StringArray(v.clone()),
         }
     }
 }
@@ -182,27 +183,24 @@ impl fmt::Display for Cell {
                 write!(f, "'{}'", ts_cstr.to_str().unwrap())
             },
             Cell::Json(v) => write!(f, "{:?}", v),
-            Cell::Bytea(v) => {
-                let byte_u8 = unsafe { pgrx::varlena::varlena_to_byte_slice(*v) };
-                let hex = byte_u8
-                    .iter()
-                    .map(|b| format!("{:02X}", b))
-                    .collect::<Vec<String>>()
-                    .join("");
-                if hex.is_empty() {
-                    write!(f, "''")
-                } else {
-                    write!(f, r#"'\x{}'"#, hex)
-                }
-            }
-            Cell::Uuid(v) => write!(f, "{}", v),
-            Cell::BoolArray(v) => write_array(v, f),
-            Cell::I16Array(v) => write_array(v, f),
-            Cell::I32Array(v) => write_array(v, f),
-            Cell::I64Array(v) => write_array(v, f),
-            Cell::F32Array(v) => write_array(v, f),
-            Cell::F64Array(v) => write_array(v, f),
-            Cell::StringArray(v) => write_array(v, f),
+            Cell::Interval(v) => unsafe {
+                let i = fcinfo::direct_function_call_as_datum(
+                    pg_sys::interval_out,
+                    &[(*v).into_datum()],
+                )
+                .unwrap();
+                let i_cstr = CStr::from_ptr(i.cast_mut_ptr());
+                write!(f, "'{}'", i_cstr.to_str().unwrap())
+            },
+            Cell::Bytea(v) => write!(f, "{:?}", v),
+            Cell::Uuid(v) => write!(f, "{:?}", v),
+            Cell::BoolArray(v) => write!(f, "{:?}", v),
+            Cell::StringArray(v) => write!(f, "{:?}", v),
+            Cell::I16Array(v) => write!(f, "{:?}", v),
+            Cell::I32Array(v) => write!(f, "{:?}", v),
+            Cell::I64Array(v) => write!(f, "{:?}", v),
+            Cell::F32Array(v) => write!(f, "{:?}", v),
+            Cell::F64Array(v) => write!(f, "{:?}", v),
         }
     }
 }
@@ -225,15 +223,16 @@ impl IntoDatum for Cell {
             Cell::Timestamptz(v) => v.into_datum(),
             Cell::Interval(v) => v.into_datum(),
             Cell::Json(v) => v.into_datum(),
-            Cell::Bytea(v) => Some(Datum::from(v)),
+            Cell::Interval(v) => v.into_datum(),
+            Cell::Bytea(v) => Some(Datum::from(v as *mut pg_sys::varlena)),
             Cell::Uuid(v) => v.into_datum(),
             Cell::BoolArray(v) => v.into_datum(),
+            Cell::StringArray(v) => v.into_datum(),
             Cell::I16Array(v) => v.into_datum(),
             Cell::I32Array(v) => v.into_datum(),
             Cell::I64Array(v) => v.into_datum(),
             Cell::F32Array(v) => v.into_datum(),
             Cell::F64Array(v) => v.into_datum(),
-            Cell::StringArray(v) => v.into_datum(),
         }
     }
 
@@ -258,15 +257,16 @@ impl IntoDatum for Cell {
             || other == pg_sys::TIMESTAMPTZOID
             || other == pg_sys::INTERVALOID
             || other == pg_sys::JSONBOID
+            || other == pg_sys::INTERVALOID
             || other == pg_sys::BYTEAOID
             || other == pg_sys::UUIDOID
             || other == pg_sys::BOOLARRAYOID
+            || other == pg_sys::TEXTARRAYOID
             || other == pg_sys::INT2ARRAYOID
             || other == pg_sys::INT4ARRAYOID
             || other == pg_sys::INT8ARRAYOID
             || other == pg_sys::FLOAT4ARRAYOID
             || other == pg_sys::FLOAT8ARRAYOID
-            || other == pg_sys::TEXTARRAYOID
     }
 }
 
@@ -320,33 +320,36 @@ impl FromDatum for Cell {
             PgOid::BuiltIn(PgBuiltInOids::JSONBOID) => {
                 JsonB::from_datum(datum, is_null).map(Cell::Json)
             }
+            PgOid::BuiltIn(PgBuiltInOids::INTERVALOID) => {
+                Some(Cell::Interval(Interval::from_datum(datum, false).unwrap()))
+            }
             PgOid::BuiltIn(PgBuiltInOids::BYTEAOID) => {
-                Some(Cell::Bytea(datum.cast_mut_ptr::<bytea>()))
+                Some(Cell::Bytea(datum.cast_mut_ptr::<pg_sys::varlena>()))
             }
             PgOid::BuiltIn(PgBuiltInOids::UUIDOID) => {
-                Uuid::from_datum(datum, is_null).map(Cell::Uuid)
+                Some(Cell::Uuid(Uuid::from_datum(datum, false).unwrap()))
             }
-            PgOid::BuiltIn(PgBuiltInOids::BOOLARRAYOID) => {
-                Vec::<Option<bool>>::from_datum(datum, false).map(Cell::BoolArray)
-            }
-            PgOid::BuiltIn(PgBuiltInOids::INT2ARRAYOID) => {
-                Vec::<Option<i16>>::from_datum(datum, false).map(Cell::I16Array)
-            }
-            PgOid::BuiltIn(PgBuiltInOids::INT4ARRAYOID) => {
-                Vec::<Option<i32>>::from_datum(datum, false).map(Cell::I32Array)
-            }
-            PgOid::BuiltIn(PgBuiltInOids::INT8ARRAYOID) => {
-                Vec::<Option<i64>>::from_datum(datum, false).map(Cell::I64Array)
-            }
-            PgOid::BuiltIn(PgBuiltInOids::FLOAT4ARRAYOID) => {
-                Vec::<Option<f32>>::from_datum(datum, false).map(Cell::F32Array)
-            }
-            PgOid::BuiltIn(PgBuiltInOids::FLOAT8ARRAYOID) => {
-                Vec::<Option<f64>>::from_datum(datum, false).map(Cell::F64Array)
-            }
-            PgOid::BuiltIn(PgBuiltInOids::TEXTARRAYOID) => {
-                Vec::<Option<String>>::from_datum(datum, false).map(Cell::StringArray)
-            }
+            PgOid::BuiltIn(PgBuiltInOids::BOOLARRAYOID) => Some(Cell::BoolArray(
+                Vec::<Option<bool>>::from_datum(datum, false).unwrap(),
+            )),
+            PgOid::BuiltIn(PgBuiltInOids::TEXTARRAYOID) => Some(Cell::StringArray(
+                Vec::<Option<String>>::from_datum(datum, false).unwrap(),
+            )),
+            PgOid::BuiltIn(PgBuiltInOids::INT2ARRAYOID) => Some(Cell::I16Array(
+                Vec::<Option<i16>>::from_datum(datum, false).unwrap(),
+            )),
+            PgOid::BuiltIn(PgBuiltInOids::INT4ARRAYOID) => Some(Cell::I32Array(
+                Vec::<Option<i32>>::from_datum(datum, false).unwrap(),
+            )),
+            PgOid::BuiltIn(PgBuiltInOids::INT8ARRAYOID) => Some(Cell::I64Array(
+                Vec::<Option<i64>>::from_datum(datum, false).unwrap(),
+            )),
+            PgOid::BuiltIn(PgBuiltInOids::FLOAT4ARRAYOID) => Some(Cell::F32Array(
+                Vec::<Option<f32>>::from_datum(datum, false).unwrap(),
+            )),
+            PgOid::BuiltIn(PgBuiltInOids::FLOAT8ARRAYOID) => Some(Cell::F64Array(
+                Vec::<Option<f64>>::from_datum(datum, false).unwrap(),
+            )),
             _ => None,
         }
     }
