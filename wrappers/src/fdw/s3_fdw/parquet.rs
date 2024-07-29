@@ -334,8 +334,22 @@ impl S3Parquet {
                             None
                         } else {
                             arr.value_as_datetime(self.batch_idx).map(|ts| {
-                                let ts = to_timestamp(ts.timestamp() as f64);
+                                let ts = to_timestamp(ts.and_utc().timestamp() as f64);
                                 Cell::Timestamp(ts.to_utc())
+                            })
+                        }
+                    }
+                    pg_sys::TIMESTAMPTZOID => {
+                        let arr = col
+                            .as_any()
+                            .downcast_ref::<array::TimestampNanosecondArray>()
+                            .ok_or(S3FdwError::ColumnTypeNotMatch(tgt_col.name.clone()))?;
+                        if arr.is_null(self.batch_idx) {
+                            None
+                        } else {
+                            arr.value_as_datetime(self.batch_idx).map(|ts| {
+                                let ts = to_timestamp(ts.and_utc().timestamp() as f64);
+                                Cell::Timestamptz(ts)
                             })
                         }
                     }

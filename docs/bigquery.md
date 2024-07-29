@@ -2,6 +2,10 @@
 
 The BigQuery Wrapper allows you to read and write data from BigQuery within your Postgres database.
 
+!!! warning
+
+    Restoring a logical backup of a database with a materialized view using a foreign table can fail. For this reason, either do not use foreign tables in materialized views or use them in databases with physical backups enabled.
+
 ## Supported Data Types
 
 | Postgres Type    | BigQuery Type |
@@ -15,6 +19,7 @@ The BigQuery Wrapper allows you to read and write data from BigQuery within your
 | date             | DATE          |
 | timestamp        | DATETIME      |
 | timestamp        | TIMESTAMP     |
+| timestamptz      | TIMESTAMP     |
 
 ## Preparation
 

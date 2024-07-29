@@ -1,5 +1,9 @@
 [Stripe](https://stripe.com) is an API driven online payment processing utility. `supabase/wrappers` exposes below endpoints.
 
+!!! warning
+
+    Restoring a logical backup of a database with a materialized view using a foreign table can fail. For this reason, either do not use foreign tables in materialized views or use them in databases with physical backups enabled.
+
 ## Preparation
 
 Before you get started, make sure the `wrappers` extension is installed on your database:
@@ -41,7 +45,8 @@ We need to provide Postgres with the credentials to connect to Stripe, and any a
       foreign data wrapper stripe_wrapper
       options (
         api_key_id '<key_ID>', -- The Key ID from above, required.
-        api_url 'https://api.stripe.com/v1/'  -- Stripe API base URL, optional. Default is 'https://api.stripe.com/v1/'
+        api_url 'https://api.stripe.com/v1/',  -- Stripe API base URL, optional. Default is 'https://api.stripe.com/v1/'
+        api_version '2024-06-20'  -- Stripe API version, optional. Default is your Stripe account’s default API version.
       );
     ```
 
@@ -52,7 +57,8 @@ We need to provide Postgres with the credentials to connect to Stripe, and any a
       foreign data wrapper stripe_wrapper
       options (
         api_key '<Stripe API Key>',  -- Stripe API key, required
-        api_url 'https://api.stripe.com/v1/'  -- Stripe API base URL, optional. Default is 'https://api.stripe.com/v1/'
+        api_url 'https://api.stripe.com/v1/',  -- Stripe API base URL, optional. Default is 'https://api.stripe.com/v1/'
+        api_version '2024-06-20'  -- Stripe API version, optional. Default is your Stripe account’s default API version.
       );
     ```
 
@@ -839,3 +845,30 @@ update stripe.customers set description='hello fdw' where id ='cus_xxx';
 update stripe.customers set attrs='{"metadata[foo]": "bar"}' where id ='cus_xxx';
 delete from stripe.customers where id ='cus_xxx';
 ```
+
+To insert into an object with sub-fields, we need to create the foreign table with column name exactly same as the API required. For example, to insert a `subscription` object we can define the foreign table following [the Stripe API docs](https://docs.stripe.com/api/subscriptions/create):
+
+```sql
+-- create the subscription table for data insertion, the 'customer'
+-- and 'items[0][price]' fields are required.
+create foreign table stripe.subscriptions (
+  id text,
+  customer text,
+  "items[0][price]" text  -- column name will be used in API Post request
+)
+  server stripe_server
+  options (
+    object 'subscriptions',
+    rowid_column 'id'
+  );
+```
+
+And then we can insert a subscription like below:
+
+```sql
+insert into stripe.subscriptions (customer, "items[0][price]")
+values ('cus_Na6dX7aXxi11N4', 'price_1MowQULkdIwHu7ixraBm864M');
+```
+
+Note this foreign table is only for data insertion, it cannot be used in `select` statement.
+

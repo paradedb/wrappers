@@ -47,7 +47,26 @@ Currently `supabase/wrappers` supports:
 | ClickHouse  |   ✅   |   ✅   |   ✅   |   ✅   |    ❌    |
 | Firebase    |   ✅   |   ❌   |   ❌   |   ❌   |    ❌    |
 | Logflare    |   ✅   |   ❌   |   ❌   |   ❌   |    ❌    |
+| Notion      |   ✅   |   ❌   |   ❌   |   ❌   |    ❌    |
+| Paddle      |   ✅   |   ✅   |   ✅   |   ❌   |    ❌    |
 | Redis       |   ✅   |   ❌   |   ❌   |   ❌   |    ❌    |
 | S3          |   ✅   |   ❌   |   ❌   |   ❌   |    ❌    |
+| Snowflake   |   ✅   |   ✅   |   ✅   |   ✅   |    ❌    |
 | Stripe      |   ✅   |   ✅   |   ✅   |   ✅   |    ❌    |
 | SQL Server  |   ✅   |   ❌   |   ❌   |   ❌   |    ❌    |
+
+## WebAssembly(Wasm) foreign data wrapper
+
+Since v0.4.0, `supabase/wrappers` supports WebAssembly (Wasm) foreign data wrapper. It enhances flexibility and performance by enabling seamless integration and execution of WebAssembly modules within PostgreSQL.
+
+The Wasm foreign data wrappers are dynamically loaded during query, so they are not required to be built into Wrappers extension. Currently supported Wasm foreign data wrappers are listed below:
+
+| Integration | Select | Insert | Update | Delete | Truncate |
+| ----------- | :----: | :----: | :----: | :----: | :------: |
+| Paddle      |   ✅   |   ✅   |   ✅   |   ❌   |    ❌    |
+| Snowflake   |   ✅   |   ✅   |   ✅   |   ✅   |    ❌    |
+
+
+!!! warning
+
+    Restoring a logical backup of a database with a materialized view using a foreign table can fail. For this reason, either do not use foreign tables in materialized views or use them in databases with physical backups enabled.

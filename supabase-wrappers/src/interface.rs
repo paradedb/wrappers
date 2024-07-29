@@ -50,7 +50,7 @@ pub enum Cell {
     Date(Date),
     Time(Time),
     Timestamp(Timestamp),
-    TimestampTz(TimestampWithTimeZone),
+    Timestamptz(TimestampWithTimeZone),
     Json(JsonB),
     Interval(Interval),
     Bytea(*mut pg_sys::varlena),
@@ -79,7 +79,7 @@ impl Clone for Cell {
             Cell::Date(v) => Cell::Date(*v),
             Cell::Time(v) => Cell::Time(*v),
             Cell::Timestamp(v) => Cell::Timestamp(*v),
-            Cell::TimestampTz(v) => Cell::TimestampTz(*v),
+            Cell::Timestamptz(v) => Cell::Timestamptz(*v),
             Cell::Json(v) => Cell::Json(JsonB(v.0.clone())),
             Cell::Interval(v) => Cell::Interval(v.clone()),
             Cell::Bytea(v) => Cell::Bytea(*v as *mut pg_sys::varlena),
@@ -110,9 +110,13 @@ impl fmt::Display for Cell {
             Cell::Date(v) => unsafe {
                 let dt =
                     fcinfo::direct_function_call_as_datum(pg_sys::date_out, &[(*v).into_datum()])
-                        .unwrap();
+                        .expect("cell should be a valid date");
                 let dt_cstr = CStr::from_ptr(dt.cast_mut_ptr());
-                write!(f, "'{}'", dt_cstr.to_str().unwrap())
+                write!(
+                    f,
+                    "'{}'",
+                    dt_cstr.to_str().expect("date should be a valid string")
+                )
             },
             Cell::Time(v) => unsafe {
                 let tm =
@@ -126,18 +130,30 @@ impl fmt::Display for Cell {
                     pg_sys::timestamp_out,
                     &[(*v).into_datum()],
                 )
-                .unwrap();
+                .expect("cell should be a valid timestamp");
                 let ts_cstr = CStr::from_ptr(ts.cast_mut_ptr());
-                write!(f, "'{}'", ts_cstr.to_str().unwrap())
+                write!(
+                    f,
+                    "'{}'",
+                    ts_cstr
+                        .to_str()
+                        .expect("timestamp should be a valid string")
+                )
             },
-            Cell::TimestampTz(v) => unsafe {
+            Cell::Timestamptz(v) => unsafe {
                 let ts = fcinfo::direct_function_call_as_datum(
                     pg_sys::timestamptz_out,
                     &[(*v).into_datum()],
                 )
-                .unwrap();
+                .expect("cell should be a valid timestamptz");
                 let ts_cstr = CStr::from_ptr(ts.cast_mut_ptr());
-                write!(f, "'{}'", ts_cstr.to_str().unwrap())
+                write!(
+                    f,
+                    "'{}'",
+                    ts_cstr
+                        .to_str()
+                        .expect("timestamptz should be a valid string")
+                )
             },
             Cell::Json(v) => write!(f, "{:?}", v),
             Cell::Interval(v) => unsafe {
@@ -177,7 +193,7 @@ impl IntoDatum for Cell {
             Cell::Date(v) => v.into_datum(),
             Cell::Time(v) => v.into_datum(),
             Cell::Timestamp(v) => v.into_datum(),
-            Cell::TimestampTz(v) => v.into_datum(),
+            Cell::Timestamptz(v) => v.into_datum(),
             Cell::Json(v) => v.into_datum(),
             Cell::Interval(v) => v.into_datum(),
             Cell::Bytea(v) => Some(Datum::from(v as *mut pg_sys::varlena)),
@@ -230,52 +246,47 @@ impl FromDatum for Cell {
     where
         Self: Sized,
     {
-        if is_null {
-            return None;
-        }
         let oid = PgOid::from(typoid);
         match oid {
             PgOid::BuiltIn(PgBuiltInOids::BOOLOID) => {
-                Some(Cell::Bool(bool::from_datum(datum, false).unwrap()))
+                bool::from_datum(datum, is_null).map(Cell::Bool)
             }
-            PgOid::BuiltIn(PgBuiltInOids::CHAROID) => {
-                Some(Cell::I8(i8::from_datum(datum, false).unwrap()))
-            }
+            PgOid::BuiltIn(PgBuiltInOids::CHAROID) => i8::from_datum(datum, is_null).map(Cell::I8),
             PgOid::BuiltIn(PgBuiltInOids::INT2OID) => {
-                Some(Cell::I16(i16::from_datum(datum, false).unwrap()))
+                i16::from_datum(datum, is_null).map(Cell::I16)
             }
             PgOid::BuiltIn(PgBuiltInOids::FLOAT4OID) => {
-                Some(Cell::F32(f32::from_datum(datum, false).unwrap()))
+                f32::from_datum(datum, is_null).map(Cell::F32)
             }
             PgOid::BuiltIn(PgBuiltInOids::INT4OID) => {
-                Some(Cell::I32(i32::from_datum(datum, false).unwrap()))
+                i32::from_datum(datum, is_null).map(Cell::I32)
             }
             PgOid::BuiltIn(PgBuiltInOids::FLOAT8OID) => {
-                Some(Cell::F64(f64::from_datum(datum, false).unwrap()))
+                f64::from_datum(datum, is_null).map(Cell::F64)
             }
             PgOid::BuiltIn(PgBuiltInOids::INT8OID) => {
-                Some(Cell::I64(i64::from_datum(datum, false).unwrap()))
+                i64::from_datum(datum, is_null).map(Cell::I64)
             }
             PgOid::BuiltIn(PgBuiltInOids::NUMERICOID) => {
-                Some(Cell::Numeric(AnyNumeric::from_datum(datum, false).unwrap()))
+                AnyNumeric::from_datum(datum, is_null).map(Cell::Numeric)
             }
             PgOid::BuiltIn(PgBuiltInOids::TEXTOID) => {
-                Some(Cell::String(String::from_datum(datum, false).unwrap()))
+                String::from_datum(datum, is_null).map(Cell::String)
             }
             PgOid::BuiltIn(PgBuiltInOids::DATEOID) => {
-                Some(Cell::Date(Date::from_datum(datum, false).unwrap()))
+                Date::from_datum(datum, is_null).map(Cell::Date)
+            }
+            PgOid::BuiltIn(PgBuiltInOids::TIMESTAMPOID) => {
+                Timestamp::from_datum(datum, is_null).map(Cell::Timestamp)
+            }
+            PgOid::BuiltIn(PgBuiltInOids::TIMESTAMPTZOID) => {
+                TimestampWithTimeZone::from_datum(datum, is_null).map(Cell::Timestamptz)
             }
             PgOid::BuiltIn(PgBuiltInOids::TIMEOID) => {
                 Some(Cell::Time(Time::from_datum(datum, false).unwrap()))
             }
-            PgOid::BuiltIn(PgBuiltInOids::TIMESTAMPOID) => Some(Cell::Timestamp(
-                Timestamp::from_datum(datum, false).unwrap(),
-            )),
-            PgOid::BuiltIn(PgBuiltInOids::TIMESTAMPTZOID) => Some(Cell::TimestampTz(
-                TimestampWithTimeZone::from_datum(datum, false).unwrap(),
-            )),
             PgOid::BuiltIn(PgBuiltInOids::JSONBOID) => {
-                Some(Cell::Json(JsonB::from_datum(datum, false).unwrap()))
+                JsonB::from_datum(datum, is_null).map(Cell::Json)
             }
             PgOid::BuiltIn(PgBuiltInOids::INTERVALOID) => {
                 Some(Cell::Interval(Interval::from_datum(datum, false).unwrap()))
@@ -349,9 +360,9 @@ impl Row {
     {
         let keep: Vec<bool> = self.iter().map(f).collect();
         let mut iter = keep.iter();
-        self.cols.retain(|_| *iter.next().unwrap());
+        self.cols.retain(|_| *iter.next().unwrap_or(&true));
         iter = keep.iter();
-        self.cells.retain(|_| *iter.next().unwrap());
+        self.cells.retain(|_| *iter.next().unwrap_or(&true));
     }
 
     /// Replace `self` with the source row
@@ -727,6 +738,19 @@ pub trait ForeignDataWrapper<E: Into<ErrorReport>> {
         Ok(())
     }
 
+    /// Obtain a list of foreign table creation commands
+    ///
+    /// Return a list of string, each of which must contain a CREATE FOREIGN TABLE
+    /// which will be executed by the core server.
+    ///
+    /// [See more details](https://www.postgresql.org/docs/current/fdw-callbacks.html#FDW-CALLBACKS-IMPORT).
+    fn import_foreign_schema(
+        _stmt: crate::import_foreign_schema::ImportForeignSchemaStmt,
+        _server_oid: pg_sys::Oid,
+    ) -> Vec<String> {
+        Vec::new()
+    }
+
     /// Returns a FdwRoutine for the FDW
     ///
     /// Not to be used directly, use [`wrappers_fdw`](crate::wrappers_fdw) macro instead.
@@ -735,9 +759,13 @@ pub trait ForeignDataWrapper<E: Into<ErrorReport>> {
         Self: Sized,
     {
         unsafe {
-            use crate::{modify, scan};
+            use crate::{import_foreign_schema, modify, scan};
             let mut fdw_routine =
                 FdwRoutine::<AllocatedByRust>::alloc_node(pg_sys::NodeTag::T_FdwRoutine);
+
+            // import foreign schema
+            fdw_routine.ImportForeignSchema =
+                Some(import_foreign_schema::import_foreign_schema::<E, Self>);
 
             // plan phase
             fdw_routine.GetForeignRelSize = Some(scan::get_foreign_rel_size::<E, Self>);
