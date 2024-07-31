@@ -354,7 +354,7 @@ impl FromDatum for Cell {
 }
 
 pub trait CellFormatter {
-    fn fmt_cell(&self, cell: &Cell) -> String;
+    fn fmt_cell(&mut self, cell: &Cell) -> String;
 }
 
 struct DefaultFormatter {}
@@ -366,7 +366,7 @@ impl DefaultFormatter {
 }
 
 impl CellFormatter for DefaultFormatter {
-    fn fmt_cell(&self, cell: &Cell) -> String {
+    fn fmt_cell(&mut self, cell: &Cell) -> String {
         format!("{}", cell)
     }
 }
@@ -509,11 +509,11 @@ pub struct Qual {
 
 impl Qual {
     pub fn deparse(&self) -> String {
-        let formatter = DefaultFormatter::new();
-        self.deparse_with_fmt(formatter)
+        let mut formatter = DefaultFormatter::new();
+        self.deparse_with_fmt(&mut formatter)
     }
 
-    pub fn deparse_with_fmt<T: CellFormatter>(&self, t: T) -> String {
+    pub fn deparse_with_fmt<T: CellFormatter>(&self, t: &mut T) -> String {
         if self.use_or {
             match &self.value {
                 Value::Cell(_) => unreachable!(),
@@ -534,11 +534,11 @@ impl Qual {
                         Cell::String(cell) if cell == "null" => {
                             format!("{} {} null", self.field, self.operator)
                         }
-                        _ => format!("{} {} {}", self.field, self.operator, cell),
+                        _ => format!("{} {} {}", self.field, self.operator, t.fmt_cell(cell)),
                     },
-                    "~~" => format!("{} like {}", self.field, cell),
-                    "!~~" => format!("{} not like {}", self.field, cell),
-                    _ => format!("{} {} {}", self.field, self.operator, cell),
+                    "~~" => format!("{} like {}", self.field, t.fmt_cell(cell)),
+                    "!~~" => format!("{} not like {}", self.field, t.fmt_cell(cell)),
+                    _ => format!("{} {} {}", self.field, self.operator, t.fmt_cell(cell)),
                 },
                 Value::Array(_) => unreachable!(),
             }
