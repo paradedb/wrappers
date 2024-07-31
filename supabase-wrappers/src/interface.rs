@@ -349,6 +349,23 @@ impl FromDatum for Cell {
     }
 }
 
+pub trait CellFormatter {
+    fn fmt_cell(&self, cell: &Cell) -> String;
+}
+
+struct DefaultFormatter {}
+
+impl DefaultFormatter {
+    fn new() -> Self {
+        Self {}
+    }
+}
+
+impl CellFormatter for DefaultFormatter {
+    fn fmt_cell(&self, cell: &Cell) -> String {
+        format!("{}", cell)
+    }
+}
 /// A data row in a table
 ///
 /// The row contains a column name list and cell list with same number of
@@ -488,13 +505,20 @@ pub struct Qual {
 
 impl Qual {
     pub fn deparse(&self) -> String {
+        let formatter = DefaultFormatter::new();
+        self.deparse_with_fmt(formatter)
+    }
+
+    pub fn deparse_with_fmt<T: CellFormatter>(&self, t: T) -> String {
         if self.use_or {
             match &self.value {
                 Value::Cell(_) => unreachable!(),
                 Value::Array(cells) => {
                     let conds: Vec<String> = cells
                         .iter()
-                        .map(|cell| format!("{} {} {}", self.field, self.operator, cell))
+                        .map(|cell| {
+                            format!("{} {} {}", self.field, self.operator, t.fmt_cell(cell))
+                        })
                         .collect();
                     conds.join(" or ")
                 }
