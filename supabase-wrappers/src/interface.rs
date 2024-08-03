@@ -190,7 +190,11 @@ impl fmt::Display for Cell {
                     .map(|b| format!("{:02X}", b))
                     .collect::<Vec<String>>()
                     .join("");
-                write!(f, r#"\x{}"#, hex)
+                if hex.is_empty() {
+                    write!(f, "''")
+                } else {
+                    write!(f, r#"'\x{}'"#, hex)
+                }
             }
             Cell::Uuid(v) => {
                 write!(f, "'{}'", v)
@@ -388,7 +392,6 @@ impl CellFormatter for DefaultFormatter {
         format!("{}", cell)
     }
 }
-
 /// A data row in a table
 ///
 /// The row contains a column name list and cell list with same number of
