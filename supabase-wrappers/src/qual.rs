@@ -20,114 +20,59 @@ pub(crate) unsafe fn form_array_from_datum(
     typoid: pg_sys::Oid,
 ) -> Option<Vec<Cell>> {
     let oid = PgOid::from(typoid);
-    match oid {
+    let opt_cell = match oid {
         PgOid::BuiltIn(PgBuiltInOids::BOOLARRAYOID) => {
-            Array::<bool>::from_polymorphic_datum(datum, is_null, pg_sys::BOOLOID).map(|arr| {
-                arr.iter()
-                    .filter(|v| v.is_some())
-                    .map(|v| Cell::Bool(v.expect("non-null array element")))
-                    .collect::<Vec<_>>()
-            })
+            Cell::from_polymorphic_datum(datum, false, pg_sys::BOOLOID)
         }
         PgOid::BuiltIn(PgBuiltInOids::CHARARRAYOID) => {
-            Array::<i8>::from_polymorphic_datum(datum, is_null, pg_sys::CHAROID).map(|arr| {
-                arr.iter()
-                    .filter(|v| v.is_some())
-                    .map(|v| Cell::I8(v.expect("non-null array element")))
-                    .collect::<Vec<_>>()
-            })
+            Cell::from_polymorphic_datum(datum, false, pg_sys::CHAROID)
         }
         PgOid::BuiltIn(PgBuiltInOids::INT2ARRAYOID) => {
-            Array::<i16>::from_polymorphic_datum(datum, is_null, pg_sys::INT2OID).map(|arr| {
-                arr.iter()
-                    .filter(|v| v.is_some())
-                    .map(|v| Cell::I16(v.expect("non-null array element")))
-                    .collect::<Vec<_>>()
-            })
+            Cell::from_polymorphic_datum(datum, false, pg_sys::INT2OID)
         }
         PgOid::BuiltIn(PgBuiltInOids::FLOAT4ARRAYOID) => {
-            Array::<f32>::from_polymorphic_datum(datum, is_null, pg_sys::FLOAT4OID).map(|arr| {
-                arr.iter()
-                    .filter(|v| v.is_some())
-                    .map(|v| Cell::F32(v.expect("non-null array element")))
-                    .collect::<Vec<_>>()
-            })
+            Cell::from_polymorphic_datum(datum, false, pg_sys::FLOAT4OID)
         }
         PgOid::BuiltIn(PgBuiltInOids::INT4ARRAYOID) => {
-            Array::<i32>::from_polymorphic_datum(datum, is_null, pg_sys::INT4OID).map(|arr| {
-                arr.iter()
-                    .filter(|v| v.is_some())
-                    .map(|v| Cell::I32(v.expect("non-null array element")))
-                    .collect::<Vec<_>>()
-            })
+            Cell::from_polymorphic_datum(datum, false, pg_sys::INT4OID)
         }
         PgOid::BuiltIn(PgBuiltInOids::FLOAT8ARRAYOID) => {
-            Array::<f64>::from_polymorphic_datum(datum, is_null, pg_sys::FLOAT8OID).map(|arr| {
-                arr.iter()
-                    .filter(|v| v.is_some())
-                    .map(|v| Cell::F64(v.expect("non-null array element")))
-                    .collect::<Vec<_>>()
-            })
+            Cell::from_polymorphic_datum(datum, false, pg_sys::FLOAT8OID)
         }
         PgOid::BuiltIn(PgBuiltInOids::INT8ARRAYOID) => {
-            Array::<i64>::from_polymorphic_datum(datum, is_null, pg_sys::INT8OID).map(|arr| {
-                arr.iter()
-                    .filter(|v| v.is_some())
-                    .map(|v| Cell::I64(v.expect("non-null array element")))
-                    .collect::<Vec<_>>()
-            })
+            Cell::from_polymorphic_datum(datum, false, pg_sys::INT8OID)
         }
         PgOid::BuiltIn(PgBuiltInOids::TEXTARRAYOID) => {
-            Array::<String>::from_polymorphic_datum(datum, is_null, pg_sys::TEXTOID).map(|arr| {
-                arr.iter()
-                    .filter(|v| v.is_some())
-                    .map(|v| Cell::String(v.expect("non-null array element")))
-                    .collect::<Vec<_>>()
-            })
+            Cell::from_polymorphic_datum(datum, false, pg_sys::TEXTOID)
         }
         PgOid::BuiltIn(PgBuiltInOids::DATEARRAYOID) => {
-            Array::<Date>::from_polymorphic_datum(datum, is_null, pg_sys::DATEOID).map(|arr| {
-                arr.iter()
-                    .filter(|v| v.is_some())
-                    .map(|v| Cell::Date(v.expect("non-null array element")))
-                    .collect::<Vec<_>>()
-            })
+            Cell::from_polymorphic_datum(datum, false, pg_sys::DATEOID)
         }
         PgOid::BuiltIn(PgBuiltInOids::TIMEARRAYOID) => {
-            Vec::<Cell>::from_polymorphic_datum(datum, false, pg_sys::TIMEOID)
+            Cell::from_polymorphic_datum(datum, false, pg_sys::TIMEOID)
         }
         PgOid::BuiltIn(PgBuiltInOids::TIMESTAMPARRAYOID) => {
-            Array::<Timestamp>::from_polymorphic_datum(datum, is_null, pg_sys::TIMESTAMPOID).map(
-                |arr| {
-                    arr.iter()
-                        .filter(|v| v.is_some())
-                        .map(|v| Cell::Timestamp(v.expect("non-null array element")))
-                        .collect::<Vec<_>>()
-                },
-            )
+            Cell::from_polymorphic_datum(datum, false, pg_sys::TIMESTAMPOID)
         }
         PgOid::BuiltIn(PgBuiltInOids::TIMESTAMPTZARRAYOID) => {
-            Vec::<Cell>::from_polymorphic_datum(datum, false, pg_sys::TIMESTAMPTZOID)
+            Cell::from_polymorphic_datum(datum, false, pg_sys::TIMESTAMPTZOID)
         }
         PgOid::BuiltIn(PgBuiltInOids::JSONBARRAYOID) => {
-            Array::<JsonB>::from_polymorphic_datum(datum, is_null, pg_sys::JSONBOID).map(|arr| {
-                arr.iter()
-                    .filter(|v| v.is_some())
-                    .map(|v| Cell::Json(v.expect("non-null array element")))
-                    .collect::<Vec<_>>()
-            })
+            Cell::from_polymorphic_datum(datum, false, pg_sys::JSONBOID)
         }
         PgOid::BuiltIn(PgBuiltInOids::INTERVALARRAYOID) => {
-            Vec::<Cell>::from_polymorphic_datum(datum, false, pg_sys::INTERVALOID)
+            Cell::from_polymorphic_datum(datum, false, pg_sys::INTERVALOID)
         }
         PgOid::BuiltIn(PgBuiltInOids::BYTEAARRAYOID) => {
-            Vec::<Cell>::from_polymorphic_datum(datum, false, pg_sys::BYTEAOID)
+            Cell::from_polymorphic_datum(datum, false, pg_sys::BYTEAOID)
         }
         PgOid::BuiltIn(PgBuiltInOids::UUIDARRAYOID) => {
-            Vec::<Cell>::from_polymorphic_datum(datum, false, pg_sys::UUIDOID)
+            Cell::from_polymorphic_datum(datum, false, pg_sys::UUIDOID)
         }
         _ => None,
-    }
+    };
+
+    opt_cell.map(|cell| vec![cell])
 }
 
 pub(crate) unsafe fn get_operator(opno: pg_sys::Oid) -> pg_sys::Form_pg_operator {

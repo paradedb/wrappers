@@ -339,9 +339,6 @@ impl FromDatum for Cell {
             PgOid::BuiltIn(PgBuiltInOids::JSONBOID) => {
                 JsonB::from_datum(datum, is_null).map(Cell::Json)
             }
-            PgOid::BuiltIn(PgBuiltInOids::INTERVALOID) => {
-                Some(Cell::Interval(Interval::from_datum(datum, false).unwrap()))
-            }
             PgOid::BuiltIn(PgBuiltInOids::BYTEAOID) => {
                 Some(Cell::Bytea(datum.cast_mut_ptr::<pg_sys::varlena>()))
             }
