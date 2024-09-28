@@ -196,7 +196,7 @@ pub(super) extern "C" fn get_foreign_paths<E: Into<ErrorReport>, W: ForeignDataW
             ptr::null_mut(), // no pathkeys
             ptr::null_mut(), // no outer rel either
             ptr::null_mut(), // no extra plan
-            #[cfg((feature = "pg17"))]
+            #[cfg(feature = "pg17")]
             {
                 ptr::null_mut() // no restrict info
             },
