@@ -1,7 +1,6 @@
 use crate::prelude::*;
 use pgrx::pg_sys::Oid;
 use pgrx::{
-    datum::{Array, Date, JsonB, Timestamp},
     is_a,
     list::PgList,
     pg_sys,
@@ -19,6 +18,10 @@ pub(crate) unsafe fn form_array_from_datum(
     is_null: bool,
     typoid: pg_sys::Oid,
 ) -> Option<Vec<Cell>> {
+    if is_null {
+        return None;
+    }
+
     let oid = PgOid::from(typoid);
     let opt_cell = match oid {
         PgOid::BuiltIn(PgBuiltInOids::BOOLARRAYOID) => {

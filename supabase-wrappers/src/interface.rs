@@ -87,9 +87,9 @@ impl Clone for Cell {
             Cell::Timestamptz(v) => Cell::Timestamptz(*v),
             Cell::Json(v) => Cell::Json(Json(v.0.clone())),
             Cell::JsonB(v) => Cell::JsonB(JsonB(v.0.clone())),
-            Cell::Interval(v) => Cell::Interval(v.clone()),
-            Cell::Bytea(v) => Cell::Bytea(*v as *mut pg_sys::varlena),
-            Cell::Uuid(v) => Cell::Uuid(v.clone()),
+            Cell::Interval(v) => Cell::Interval(*v),
+            Cell::Bytea(v) => Cell::Bytea(*v),
+            Cell::Uuid(v) => Cell::Uuid(*v),
             Cell::BoolArray(v) => Cell::BoolArray(v.clone()),
             Cell::StringArray(v) => Cell::StringArray(v.clone()),
             Cell::I16Array(v) => Cell::I16Array(v.clone()),
@@ -214,21 +214,6 @@ impl fmt::Display for Cell {
     }
 }
 
-fn write_array<T: std::fmt::Display>(
-    array: &[Option<T>],
-    f: &mut fmt::Formatter<'_>,
-) -> fmt::Result {
-    let res = array
-        .iter()
-        .map(|e| match e {
-            Some(val) => format!("{}", val),
-            None => "null".to_owned(),
-        })
-        .collect::<Vec<String>>()
-        .join(",");
-    write!(f, "[{}]", res)
-}
-
 impl IntoDatum for Cell {
     fn into_datum(self) -> Option<Datum> {
         match self {
@@ -248,7 +233,6 @@ impl IntoDatum for Cell {
             Cell::Interval(v) => v.into_datum(),
             Cell::Json(v) => v.into_datum(),
             Cell::JsonB(v) => v.into_datum(),
-            Cell::Interval(v) => v.into_datum(),
             Cell::Bytea(v) => Some(Datum::from(v as *mut pg_sys::varlena)),
             Cell::Uuid(v) => v.into_datum(),
             Cell::BoolArray(v) => v.into_datum(),
