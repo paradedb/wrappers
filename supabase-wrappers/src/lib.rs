@@ -90,7 +90,12 @@
 //! type HelloWorldFdwResult<T> = Result<T, HelloWorldFdwError>;
 //!
 //! impl ForeignDataWrapper<HelloWorldFdwError> for HelloWorldFdw {
-//!     fn new(server: ForeignServer) -> HelloWorldFdwResult<Self> {
+//! 
+//!     fn new(
+//!         table_options: HashMap<String, String>,
+//!         server_options: HashMap<String, String>,
+//!         user_mapping_options: HashMap<String, String>,
+//!     ) -> HelloWorldFdwResult<Self> {
 //!         // 'server.options' is the key-value pairs defined in `CREATE SERVER` SQL, for example,
 //!         //
 //!         // create server my_helloworld_server
@@ -110,7 +115,7 @@
 //!         })
 //!     }
 //!
-//!     fn begin_scan(&mut self, quals: &[Qual], columns: &[Column], sorts: &[Sort], limit: &Option<Limit>, options: &HashMap<String, String>) -> HelloWorldFdwResult<()> {
+//!     fn begin_scan(&mut self, quals: &[Qual], columns: &[Column], sorts: &[Sort], limit: &Option<Limit>, options: HashMap<String, String>) -> HelloWorldFdwResult<()> {
 //!         // Do any initilization
 //!         Ok(())
 //!     }
@@ -123,6 +128,10 @@
 //!     fn end_scan(&mut self) -> HelloWorldFdwResult<()> {
 //!         // Cleanup any resources
 //!         Ok(())
+//!     }
+//! 
+//!     fn explain(&self) -> HelloWorldFdwResult<Option<Vec<(String, String)>>> {
+//!         Ok(None)
 //!     }
 //! }
 //! # }
@@ -172,7 +181,11 @@
 //! }
 //!
 //! impl ForeignDataWrapper<HelloWorldFdwError> for HelloWorldFdw {
-//!     fn new(server: ForeignServer) -> Result<Self, HelloWorldFdwError> {
+//!     fn new(
+//!         table_options: HashMap<String, String>,
+//!         server_options: HashMap<String, String>,
+//!         user_mapping_options: HashMap<String, String>,
+//!     ) -> Result<Self, HelloWorldFdwError> {
 //!         Ok(Self {
 //!             row_cnt: 0,
 //!             tgt_cols: Vec::new(),
@@ -185,7 +198,7 @@
 //!         columns: &[Column],
 //!         _sorts: &[Sort],
 //!         _limit: &Option<Limit>,
-//!         _options: &HashMap<String, String>,
+//!         _options: HashMap<String, String>,
 //!     ) -> Result<(), HelloWorldFdwError> {
 //!         // reset row count
 //!         self.row_cnt = 0;
@@ -220,6 +233,10 @@
 //!     fn end_scan(&mut self) -> Result<(), HelloWorldFdwError> {
 //!         // we do nothing here, but you can do things like resource cleanup and etc.
 //!         Ok(())
+//!     }
+//! 
+//!     fn explain(&self) -> Result<Option<Vec<(String, String)>>, HelloWorldFdwError> {
+//!         Ok(None)
 //!     }
 //! }
 //! ```
