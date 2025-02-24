@@ -66,10 +66,7 @@ pub(crate) fn inc_stats(fdw_name: &str, metric: Metric, inc: i64) {
     );
     Spi::run_with_args(
         &sql,
-        Some(vec![
-            (PgBuiltInOids::TEXTOID.oid(), fdw_name.into_datum()),
-            (PgBuiltInOids::INT8OID.oid(), inc.into_datum()),
-        ]),
+        &[fdw_name.into(), inc.into()],
     )
     .expect("should insert into fdw stats table");
 }
@@ -82,8 +79,7 @@ pub(crate) fn get_metadata(fdw_name: &str) -> Option<JsonB> {
         get_stats_table()
     );
     Spi::get_one_with_args(
-        &sql,
-        vec![(PgBuiltInOids::TEXTOID.oid(), fdw_name.into_datum())],
+        &sql,&[fdw_name.into()]
     )
     .unwrap_or_default()
 }
@@ -105,10 +101,7 @@ pub(crate) fn set_metadata(fdw_name: &str, metadata: Option<JsonB>) {
     );
     if let Err(err) = Spi::run_with_args(
         &sql,
-        Some(vec![
-            (PgBuiltInOids::TEXTOID.oid(), fdw_name.into_datum()),
-            (PgBuiltInOids::JSONBOID.oid(), metadata.into_datum()),
-        ]),
+        &[fdw_name.into(), metadata.into()]
     ) {
         report_warning(&format!("set fdw stats metadata failed: {}", err));
     };

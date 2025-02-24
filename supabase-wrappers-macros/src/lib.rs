@@ -14,15 +14,17 @@ use syn::{parse_macro_input, punctuated::Punctuated, ItemStruct, Lit, MetaNameVa
 ///
 /// # Example
 ///
-/// ```rust,no_run
-/// use supabase_wrappers::prelude::*;
+/// ```text
+/// use supabase_wrappers_macros::wrappers_fdw;
 ///
 /// #[wrappers_fdw(
 ///     version = "0.1.0",
 ///     author = "Supabase",
-///     website = "https://github.com/supabase/wrappers/tree/main/wrappers/src/fdw/helloworld_fdw"
+///     website = "https://github.com/supabase/wrappers/tree/main/wrappers/src/fdw/helloworld_fdw",
+///     error_type = "HelloWorldFdwError"
 /// )]
 /// pub struct HelloWorldFdw;
+/// enum HelloWorldFdwError {}
 /// ```
 ///
 /// then you can use those functions in Postgres,
