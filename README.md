@@ -1,5 +1,13 @@
 # Wrappers
 
+> **Notice**
+>
+> This fork of `supabase/wrappers` has been discontinued and is archived.
+>
+> The code in this repository is no longer maintained.
+>
+> [Learn more](https://github.com/paradedb/pg_analytics/blob/dev/README.md).
+
 `Wrappers` is a development framework for Postgres Foreign Data Wrappers ([FDW](https://wiki.postgresql.org/wiki/Foreign_data_wrappers)), written in Rust. Its goal is to make Postgres FDW development easier while keeping Rust language's modern capabilities, such as high performance, strong types, and safety.
 
 `Wrappers` is also a collection of FDWs built by [Supabase](https://www.supabase.com). We currently support the following FDWs, with more under development:
